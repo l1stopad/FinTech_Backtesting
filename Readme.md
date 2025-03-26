@@ -169,5 +169,6 @@ MIT License
 ## 🚀 Author
 
 Developer: Oleksandr Lystopad  
-- GitHub: https://github.com/l1stopad
+- GitHub 1: https://github.com/l1stopad
+- GitHub 2: https://github.com/Lystopad0
 - LinkedIn: https://www.linkedin.com/in/oleksandr-lystopad-542142218/

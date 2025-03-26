@@ -1,33 +1,19 @@
 import pandas as pd
-import vectorbt as vbt
-from .base import StrategyBase
-from core.metrics import compute_metrics
+from strategies.base import StrategyBase
 
 class VwapReversionStrategy(StrategyBase):
     """
-    Стратегія, що робить ставку на повернення ціни до VWAP (Volume Weighted Average Price).
-    Якщо ціна значно нижча за VWAP (деviation < -threshold) => купуємо,
-    якщо значно вища (deviation > threshold) => продаємо.
+    Стратегія повернення ціни до VWAP.
+    Якщо deviation < -threshold => купуємо,
+    якщо deviation > threshold => продаємо.
     """
-
     def __init__(self, price_data: pd.DataFrame, threshold: float = 0.01):
-        """
-        :param price_data: DataFrame (OHLCV)
-        :param threshold: відсоткове відхилення від VWAP, за яким робимо контртрендовий вхід/вихід
-        """
         super().__init__(price_data)
         self.threshold = threshold
         self.signals = None
-        self.pf = None
 
-    def generate_signals(self):
-        """
-        Обчислює VWAP (через rolling суму price*volume / volume)
-        і дивиться відхилення від фактичної ціни:
-        deviation = (close - vwap) / vwap
-        Якщо deviation < -threshold => +1, deviation > threshold => -1.
-        """
-        df_wide = self._reshape_to_wide(self.price_data)
+    def generate_signals(self) -> pd.DataFrame:
+        df_wide = self.data  # вже перетворено в wide-формат
         close = df_wide["close"]
         volume = df_wide["volume"]
 
@@ -44,41 +30,10 @@ class VwapReversionStrategy(StrategyBase):
         return self.signals
 
     def run_backtest(self):
-        """
-        Будуємо Portfolio на основі сигналів.
-        """
         if self.signals is None:
             self.generate_signals()
-        df_wide = self._reshape_to_wide(self.price_data)
-        close = df_wide["close"]
-
-        entries = (self.signals == 1)
-        exits = (self.signals == -1)
-
-        self.pf = vbt.Portfolio.from_signals(
-            close,
-            entries=entries,
-            exits=exits,
-            fees=0.001,
-            slippage=0.0005,
-            direction='longonly'
-        )
-        return self.pf
-
-    def get_metrics(self) -> dict:
-        """
-        Повертає метрики з compute_metrics(self.pf).
-        """
-        if self.pf is None:
-            raise ValueError("Run run_backtest first.")
-        return compute_metrics(self.pf)
-
-    def _reshape_to_wide(self, df_long: pd.DataFrame):
-        """
-        Pivot (time, symbol) -> wide формат.
-        """
-        return df_long.pivot_table(
-            index="time",
-            columns="symbol",
-            values=["open", "high", "low", "close", "volume"]
-        )
+        close = self.data["close"]
+        entries = self.signals == 1
+        exits = self.signals == -1
+        return self._run_portfolio(close, entries, exits,
+                                   fees=0.001, slippage=0.0005, direction='longonly')
