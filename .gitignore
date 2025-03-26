@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.log
+
+# venv
+venv/
+.env/
+
+data/
+results/
+.idea/
